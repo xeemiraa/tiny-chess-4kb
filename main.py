@@ -1,198 +1,2 @@
-#!/usr/bin/env python3
-import sys, json
-from pathlib import Path
-V = [0, 100, 320, 330, 500, 900, 20000]
-def F(s): return s & 7
-def R(s): return s >> 3
-def S(s): return 0 <= s < 64
-def P(b, s, p):
-    d = -8 if p < 0 else 8
-    r = R(s)
-    M = []
-    if S(s + d) and not b[s + d]:
-        M.append((s, s + d, 1 if R(s + d) == (0 if p < 0 else 7) else 0))
-    if r == (6 if p < 0 else 1) and S(s + 2 * d) and not b[s + 2 * d]:
-        M.append((s, s + 2 * d, 0))
-    for f in [-1, 1]:
-        c = s + d + f
-        if S(c):
-            t = b[c]
-            if t and ((p < 0 and t > 0) or (p > 0 and t < 0)):
-                M.append((s, c, 0))
-    return M
-def N(s):
-    return [(s, s + i, 0) for i in [-17, -15, -10, -6, 6, 10, 17, 15] if S(s + i) and abs(F(s + i) - F(s)) + abs(R(s + i) - R(s)) == 3]
-def B_(b, s, p):
-    M = []
-    for d in [-9, -7, 7, 9]:
-        s2 = s + d
-        while S(s2):
-            if abs(F(s2) - F(s)) != abs(R(s2) - R(s)):
-                break
-            t = b[s2]
-            if not t:
-                M.append((s, s2, 0))
-            elif (t < 0 and p > 0) or (t > 0 and p < 0):
-                M.append((s, s2, 0))
-                break
-            s2 += d
-    return M
-def Q(b, s, p):
-    M = []
-    for d in [-1, 1, -8, 8]:
-        s2 = s + d
-        while S(s2):
-            t = b[s2]
-            if not t:
-                M.append(s2)
-            elif (t < 0 and p > 0) or (t > 0 and p < 0):
-                M.append(s2)
-                break
-            s2 += d
-    for d in [-9, -7, 7, 9]:
-        s2 = s + d
-        while S(s2):
-            if abs(F(s2) - F(s)) != abs(R(s2) - R(s)):
-                break
-            t = b[s2]
-            if not t:
-                M.append(s2)
-            elif (t < 0 and p > 0) or (t > 0 and p < 0):
-                M.append(s2)
-                break
-            s2 += d
-    return M
-def Kb(s):
-    return [(s, s + i, 0) for i in [-9, -8, -7, -1, 1, 7, 8, 9] if S(s + i) and abs(F(s + i) - F(s)) + abs(R(s + i) - R(s)) == 1]
-def Gn(b, p):
-    M = []
-    for s in range(64):
-        t = b[s]
-        if not t:
-            continue
-        if (t > 0 and p == 0) or (t < 0 and p == 1):
-            o = abs(t)
-            if o == 1: M += P(b, s, p)
-            elif o == 2: M += N(s)
-            elif o == 3: M += B_(b, s, p)
-            elif o == 4: M += Q(b, s, p)
-            elif o == 6: M += Kb(s)
-    return M
-def Ev(b):
-    v = 0
-    for i in range(64):
-        p = b[i]
-        if p:
-            v += V[abs(p)] * (1 if p > 0 else -1)
-    return v
-def Chk(b, p):
-    for s in range(64):
-        if b[s] == (6 if p == 0 else -6):
-            for m in Gn(b, 1 - p):
-                if m[0] == s:
-                    return True
-    return False
-def MM(b, d, a, B_val, my):
-    if d == 0:
-        return Ev(b)
-    M = Gn(b, my)
-    if not M:
-        return 99999 if my == 0 else -99999
-    if my == 0:
-        b2 = -9999
-        for m in M:
-            n = b[:]
-            n[m[0]] = 0
-            n[m[1]] = 6
-            v = MM(n, d - 1, a, B_val, 1)
-            if v > b2:
-                b2 = v
-            a = max(a, v)
-            if b2 >= B_val:
-                break
-        return b2
-    else:
-        b2 = 9999
-        for m in M:
-            n = b[:]
-            n[m[0]] = 0
-            n[m[1]] = -6
-            v = MM(n, d - 1, a, B_val, 0)
-            if v < b2:
-                b2 = v
-            B_val = min(B_val, v)
-            if b2 <= B_val:
-                break
-        return b2
-def BM(b, side, d=3):
-    M = Gn(b, side)
-    if not M:
-        return None
-    if side == 0:
-        mm = -9999
-        bm = None
-        for m in M:
-            n = b[:]
-            n[m[0]] = 0
-            n[m[1]] = 6
-            v = MM(n, d - 1, -9999, 9999, 1)
-            if v > mm:
-                mm = v
-                bm = m
-        return bm
-    else:
-        mm = 9999
-        bm = None
-        for m in M:
-            n = b[:]
-            n[m[0]] = 0
-            n[m[1]] = -6
-            v = MM(n, d - 1, -9999, 9999, 0)
-            if v < mm:
-                mm = v
-                bm = m
-        return bm
-def main():
-    inp = Path("/input")
-    out = Path("/output")
-    state = {}
-    if inp.exists():
-        for f in inp.iterdir():
-            if f.suffix == '.json':
-                try:
-                    state = json.loads(f.read_text())
-                    break
-                except:
-                    pass
-    b = [0] * 64
-    side = 0
-    if state.get('fen'):
-        parts = state['fen'].split()
-        brd = parts[0]
-        r = 7
-        for row in brd.split('/'):
-            c = 0
-            for ch in row:
-                if ch.isdigit():
-                    c += int(ch)
-                else:
-                    p = ord(ch) - 64 if ch.isupper() else -(ord(ch) - 96)
-                    if p > 6:
-                        p = 6
-                    if p < -6:
-                        p = -6
-                    b[r * 8 + c] = p
-                    c += 1
-            r -= 1
-        if len(parts) > 1:
-            side = 0 if parts[1] == 'w' else 1
-    m = BM(b, side, 3)
-    if m is None:
-        print("No moves")
-        sys.exit(0)
-    out.mkdir(parents=True, exist_ok=True)
-    with open(out / "move.json", 'w') as f:
-        json.dump({'from': m[0], 'to': m[1], 'promotion': m[2]}, f)
-    print(f"Move:{m[0]}->{m[1]}")
-if __name__ == "__main__":
-    main()
+#coding:l1
+import lzma;exec(lzma.decompress('\x000\0\0*%\0\0\0\0\0\0\x004œ%Å¯^´Ìû•2h1$£41†Ö~“tØò²¥Ÿ‰i 	Ïc—xsyd%Ÿù,bFÊÇ‚»pŞãÃe÷eø%Î[$¡§Š´×¹íÃˆ^Bj¼¡àKÓ¥$ŞÛ	VzÜªÓ0 YçFÃÒ(âÉê  “T”~Oû”Øt÷Ëõ§T³F¤¢óÖ3¡<>úd°È1ªû8«²L¯€Ã{|f‡Ê…°\0\nıÔùBXßÑ¦ÈÄ)’ÿNô”sçÇ4ÕĞF¾º>m&à´ÈCJÌ\'º~øÆWt…<æ^ñ¶?UFæÊ,RO/µÛékœô;Š7…qÜ¬3?¹\\XâÃÚïA÷>Ï~/j7%˜œÂ€So6	ËO²Oô–Æ Q]Ë·0İ]Î?“?i0²øKwë€ê\\VùßóÚXİ*$Ú;ƒşb©—nßª˜›Ï„\0-ÿBdûÅ>¾ŒıÉ\\iÀ]¨ã/$Í‘]¸Y’Dº¢ÒG:ıBÖy@iÙfRŸ,™1^şŸLØŒâ€Fí…\0U	œ›B3#å÷¬uäH‚4H*­!²‰1G€±c#ûéq{Ğ¤…ØÌ"äU6Ø\'e\rÜ÷¿	Œø9J*®J5–G`¸“$*ê¿ˆ>%|¦£¯õİ6Ó³2m;\rØ—ÕìÁ\0·p¢UçAù­7± H\0W¼õí˜àåÂoÌ5zP\reU®íï§«…Âï|±¬	ˆ¹9Œ¥ÙÛP@ÅfKç«\\UÀ ş¥%ÙTì25›~ƒ2w•n™´ÿ.Éf´¡\\‡-ç?Ğzšä:€°š«Ù½¥äØze? †%E>‡EüÚÈj¹êæ+{\nÔĞÿÌğ:Ø0Ñ8î\'Ôå4úŸ\r\0ƒ5YZ„Ö¾÷ƒ ÚkÖÒ¬\n†<§dÇ—ïªó*TKÊ&½JôÆ4é`âEúìà¿pY}­w<p\0ï„œYjƒù}`‹Ü­h{›m2—ê¨4wXèêŠÿ™±iOÜõ0w)®°§NL ÏŒ78ãİğ¨jüĞÅ+¦ÊÉwí\'25ı­åø6´*ˆÃ^Aõ[QÌdjÊzMâlœ1Iç˜-¬^x#ûS¸&˜!\\ÛÕ§b\n~}¯Ş„OÔr´“ƒºIëæŠå—S©¨¶ÒÉCæ¢Q‚iÑ=w-¬Ö1Ÿ\n-ÜšÎL9İxÑÎ®æ.ÈÚAœ:w:vÚxÙ.)Ë;Ì)´áR`p¦ü‰ïœ·9‚™tS©ùeKÕà?Qâ6³íj4Àİ9¶ëÌLñ÷OmÜÁtç¡\'æÄçÎE3E¦‚=ã|š«oü¶NGê	ÄgÊ/k\rºqÃI¢±¼©ŒıeHedN\'ó‚lÖ§³¶2œ«P>X\'céÒäJ&:òª%wÀIŒç€ƒL‹•‚°SDë"šÈıb?qãPÊŒ¯-º÷!æ—Ï#êø0¤åˆÓûû•¼Î8‚j>9êF®òL[é“ñ‡±>ºŸÀõ÷WLƒW°ÀZàµ\'ïcm{áÄ€£®­·ô¨+-6sª÷¦ µi°x8ÉÅu[ ş.âäš¯§\nÍFskn7Î†G-,û¤ĞSU]ˆÕ‰V°V.´ŒÆR<í!Ø)oªdK2£-¢-M¤q\rZ¾›nèöşÃD¡Í\nØO\nT.ËÆ€>…Èù½¯6ÓHê”×í¯ß¤gøÍB¡—¨ Á%HÿãC¨ (á²jäx"ÍÓGÕKbïË@HÔd$ÕpØ1Ïƒ÷\\ Á(¡cO…I9#?§º?gÊdsa\0C·QO˜/7¢;|ˆ4ªªB$Ÿo)w±ê-€.œ×ÚªÊ6•nRú12Dá¥<â3E-•Á;N­ÍÔÙ¥	5Oƒµç8ä)sÆ¥\'6	g€äÿº7=J(pL;†êmö«úÏRÜĞ”®¡wÜS³ZóXó„­É Ôª¥3RŞ¦5ı=¹8Ï¯\r‚âßw€)éê#^#wë©¢œñĞä“ò{Æ¯~\rİ^Ÿ‡\0l^ò‰m4ZĞ0Vışw®ËP¾mváT3n¥lFª@a4çºî=ÒÌø*XrÇŞìÚ AÇ›*\0Ùf¾æQáéFc<ìÆÓÌ÷­ÌpZW³ÇiÈ’Ÿ\rYæVÖšİ¤e6Zã©™±†P\0_úŠşÒÆ³¡«ô>Œ5¼ë!r„=½úL0\0<bç\n{ªeªÒÛÃŠ”—ª©N¶»2‘şÓÈãÈô÷AËß¼JÜ)yKjx9»cµízš%¨+üÙÎKæ(¢ùçÌŞÿÃÔ‰jiM!l5ŒëwTÚ³FHfŒ+’iaYYKgİÅY™)ù4Îs°|»ŸŒæj8øõ8GĞá~]ï‚|”AÒZPDØcÄ‹ŠÛşò÷””™bçuû‰ğ²Î—Ì’h¾ã¤V ;gVÃj·³‰>÷s%Œî<–<ß­yØßª\n˜ãOzD•hµ4£‘T{ƒvUŒ/Ç]Tî]‡£\0Ë”õ"j|¾rÎš}…Lgô;’ Ÿwj/ø¡–ı™\'†·±FvJ½w*-½Ã&¿¨ã^…}êUW£F«L		 ¥Ä­âæi˜¿ˆyö/Pzİ=ÀLÙ´ôåbdì<JõJ‡°ñ—q¶E‚ÍiK“Q’m ©W¡™†·âiÈê\r/@õ‹b8;¯ä:×#“#OQŞ%ÏJÎ.Ü(Ì¥øO#fıy³ÚB›Í‰Ã97±öb¤GRúÈ¡½.¢ÆM‰¾—×&\\Ú¸˜ÕìÆó¢"‰Z7ãQ~>eså˜°«Vª£±“<Òm‹‚føëi^ùØÊu"Pu«1§Y\'ú?db7¾öº-4ÎİÊŠU\r0l)©Øş‰ ºo^¥g\\c*E¶ô{.âÖl7°ghºÕĞH¸Êq<šÊ¥!æE²¨é$şĞ¸r}DÒ|Ê@ëY‚É‘^£Û•]HŒÏŞÚqŸÊ´áÊaërË¶ÅXÜ•Ÿ‰Ò4o¯Û9Vq\n²i‰ƒ0	+İ`°´)i\\2“‚ÅÎ8FX®Ãe¿ì3‚Îz¨r õD[+†Îã½&ííĞ§mMõŸ_7K˜ßÆèš	*èa|»½=ªÍ¿\\K’QÊ§ç«øª‚lŸT0k­/¸²"ÓÄ¶ÌJ¯ 5øæÌ_ˆ»zµğEgğ*,½D9VRï\\½26W+ë³Ê.æÁ<4¯=f8Ñ"ƒøV®7×laÌÓ!²Y/U˜7PĞùQIÛL£û?\r‰Õv=§ºhÚJæ8×tW7 o´†íMJC}mg­ÔPwˆAî¦ò{gºxmjÃ rËHÊıT†lè¢Îï&àÄ®£¼·¤&ë\r»I/³¯\'ªx X¿Ò”§¶1ºW˜\r˜˜½õ –Çöşğî†`\\¸\\-Åï»a¦iyœ–w÷‰/¦XÄx.À¯œ—YÊåêåšmÿl÷@Lä˜)%¤e²9n½%gÓŸ`i1’7¹š¥‰ªtíÉC\nÖ£ß3Ñ\n\'ÅÎE»¸K"´ÑrİÔ\n(ÈÕóÍG=Ûô¤ºµòâÚm¸­V9´5 ı	ÛRrõu&‰‚íÓ03æıg×Óß	•w=d	¬÷\roÒ±™*³s§—+@é³<Ò–³+ÿ&oÁÎ6î›…‘fãX“†V{äÒSŒ .4“)9f8áùçtæô?ŸÅKN(±J´ººfMI2Æúrß”G¯*÷\r`F\\ö½x¬xAÁoí$Õy-á×!ı…‡‘2ÄÙWxQs=ÀËÀW²uÜrÊtöålÓKÅ´’ş„“ï=ÉêµE:s¹oÍnóK;Tsª¬Üj5ábrjoÙò¡§º{eÊ„>å€9\\n4\n@ûîßp!¨Iœ›ÉÉ·ştª›e‡ÏsÅÖàÀüºÍ¢kØpÑ\\ßh«k«Âä.4l©”saŸ!!%÷Ì–¥S.¹)ÿ,Œ¢ÍèÛù$AÛ¦#ª›ı\np¿”c*ÄîŞ«$‚ÖïOBSeå4­ú½-³(á~hÆÕC¶W‰j4ºĞ}Àg‹‹6r§#-$ƒ3^ı+lc-âKÍ«=•á„1W†u2ËæšÔPâ130»ÖCÏˆßR<=jô \rrs;şË\r‡ÊÚ;ƒ5¾ÓÔz­™æ±²1íDşÏ«YX\nƒ×›¡dèÅØé)ÓzÚÚÄO fš´~ÙÚ€³˜¿ín	(Âê3.` _«\\‚¡zå—Äq÷é !,_¢ìé¦™¨ÅÁ)´|o\\h¼µG .Rö2Z	ùwQ€_»\\L2Cîó³o+µj%±î·gÃ#\0kÀ™SEû$…ğa¨~R½ET„šõ0:ô3YI€6¯ ÖÉNµÓ·@¨@fØ&Ä(u{G¼QX\'¯^¿`€ÌîÙc\'›şA6.Òaµ¡}’ŞÉ0¾ß¦ÆÙğÎ§®j÷LÕ<ë­©¦6zƒéÒm—N×ÎfUàVWa›íZ)›¿ŸUí2k¡I¦°k‚@!ÌåÃk äƒ»`pŠZE­\\Ãc^4_pbÍÖ½ÕÓµ)uİZÑÉ—qÈ²™zhRâÁdò8oŠn&úÁ˜ê‚\\À´ıf],û·æşXZ¿RDÉº:}.µ»ÜEˆÌ…Å*8Š ”TÀAİ[:aXÅ­© [ß.S{¿~¸?ÈöçÛŠ	d| $ä}YêÜŒBMR³z1Ïôa3¸I·Êu¬å”oD–8°ëM25ù kÜ_÷fÑ[Pó7…-L‚kîğöÅJõŒ–­ş¶PÕ¥vsËÙM·~÷ûŒËi.ğÇ6!k™Aw:ùnltG˜ /“(JòK ÀXÓW‘¼âë„Iô	¸Ğp…˜´ s	Şg>ÎqÌ´ôÊö‰a¥òÓ>³VInª›B[dì0#ö¯fˆ… nÉÔ5”ìP­t‚® åm-ZÒqîoÍôJâÂ¹6X'.encode('l1')))
